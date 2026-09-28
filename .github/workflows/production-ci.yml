@@ -1,0 +1,97 @@
+name: Production CI
+
+on:
+  pull_request:
+    branches: [main]
+
+  push:
+    branches: [main]
+
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy after successful build
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        python-version:
+            - "3.11"
+            - "3.12"
+            - "3.13"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+            path: ~/.cache/pip
+            key: >-
+              ${{ runner.os }}-python-${{ matrix.python-version }}-pip-${{
+              hashFiles('requirements-dev.txt') }}
+            restore-keys: |
+              ${{ runner.os }}-python-${{ matrix.python-version }}-pip-
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest -v
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build
+        run: bash scripts/build.sh
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: dist/release.txt
+
+  deploy:
+    needs: build
+
+    if: >-
+      ${{
+        (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        ||
+        (github.event_name == 'workflow_dispatch' && inputs.deploy)
+      }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: release-${{ github.sha }}
+          path: dist
+
+      - name: Inspect release
+        run: cat dist/release.txt
