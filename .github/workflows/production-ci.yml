@@ -87,11 +87,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Download release artifact
         uses: actions/download-artifact@v5
         with:
-          name: release-${{ github.sha }}
-          path: dist
+            name: release-${{ github.sha }}
+            path: dist
 
-      - name: Inspect release
-        run: cat dist/release.txt
+      - name: Deploy
+        env:
+            LAB_DEPLOY_TOKEN: ${{ secrets.LAB_DEPLOY_TOKEN }}
+
+        run: bash scripts/deploy.sh
