@@ -100,5 +100,6 @@ jobs:
       - name: Deploy
         env:
             LAB_DEPLOY_TOKEN: ${{ secrets.LAB_DEPLOY_TOKEN }}
+            DEPLOY_SLEEP_SECONDS: "60"
 
         run: bash scripts/deploy.sh
