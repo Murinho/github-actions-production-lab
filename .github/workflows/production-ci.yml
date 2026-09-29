@@ -75,6 +75,7 @@ jobs:
           path: dist/release.txt
 
   deploy:
+    environment: production
     needs: build
 
     if: >-
